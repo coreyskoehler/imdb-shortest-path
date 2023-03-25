@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Find Path Results</title>
+</head>
+<body>
+  <h1>Find Path Results</h1>
+  <div id="results"></div>
+  <script>
+    const startActor = 'https://www.imdb.com/name/nm0000168/';
+    const endActor = 'https://www.imdb.com/name/nm0000190/';
+    const path = [];
+
+    function findPath(startActor, endActor, path=[]) {
+      // your implementation of findPath function here
+    }
+
+    findPath(startActor, endActor, path);
+
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerText = `Number of links found: ${path.length}`;
+  </script>
+</body>
+</html>
