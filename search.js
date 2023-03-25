@@ -144,4 +144,4 @@ async function output(startActor, endActor) {
   
 }
 
-//output('https://www.imdb.com/name/nm0001570/', 'https://www.imdb.com/name/nm0085312');
+//output('https://www.imdb.com/name/nm0000168/', 'https://www.imdb.com/name/nm0000237');

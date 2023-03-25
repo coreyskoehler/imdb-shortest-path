@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EJS App</title>
+</head>
+<body>
+  <form method="POST" action="/submit">
+    <label for="input1">Input 1:</label>
+    <input type="text" name="input1" id="input1">
+    <br>
+    <label for="input2">Input 2:</label>
+    <input type="text" name="input2" id="input2">
+  </form>
+  <h2>Output:</h2>
+  <ul>
+    <% output.forEach(function(line) { %>
+      <li><%= line %></li>
+    <% }); %>
+  </ul>
+</body>
+</html>
