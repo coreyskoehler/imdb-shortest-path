@@ -5,21 +5,24 @@
   <title>Find Path Results</title>
 </head>
 <body>
-  <h1>Find Path Results</h1>
-  <div id="results"></div>
-  <script>
-    const startActor = 'https://www.imdb.com/name/nm0000168/';
-    const endActor = 'https://www.imdb.com/name/nm0000190/';
-    const path = [];
+  <h1>Shortest "IMDB Race" Path</h1>
+  <label for="start-url">Starting URL:</label>
+<input type="text" id="start-url" name="start-url">
 
-    function findPath(startActor, endActor, path=[]) {
-      // your implementation of findPath function here
-    }
+<label for="end-url">Ending URL:</label>
+<input type="text" id="end-url" name="end-url">
 
-    findPath(startActor, endActor, path);
+<button onclick="displayUrls()">Submit</button>
 
-    const resultsDiv = document.getElementById('results');
-    resultsDiv.innerText = `Number of links found: ${path.length}`;
-  </script>
+<p id="urls-display"></p>
+<script>
+  function displayUrls() {
+    var startUrl = document.getElementById("start-url").value;
+    var endUrl = document.getElementById("end-url").value;
+    var urlsDisplay = document.getElementById("urls-display");
+    urlsDisplay.innerHTML = "Starting URL: " + startUrl + "<br>Ending URL: " + endUrl;
+}
+</script>
+</script>
 </body>
 </html>
