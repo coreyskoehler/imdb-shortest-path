@@ -1,7 +1,7 @@
 const request = require('request');
 const cheerio = require('cheerio');
 
-async function findPath(startActor, endActor, visited = new Set()) {
+async function findPath(startActor, endActor, visitedName = new Set(), visitedTitle = new Set()) {
   console.log(`Checking ${startActor}`);
   if (startActor === endActor) {
     console.log(`Found ${endActor}`);
@@ -37,24 +37,24 @@ async function findPath(startActor, endActor, visited = new Set()) {
     const url = link.attr('href');
 
     if (url) {
-      if (isNamePage && url.startsWith('/title/') && !visited.has(url)) {
+      if (isNamePage && url.startsWith('/title/') && !visitedTitle.has(url)) {
         const fullUrl = `https://www.imdb.com${url}`;
-        visited.add(url);
+        visitedTitle.add(url);
 
-        const result = await findPath(fullUrl, endActor, visited);
+        const result = await findPath(fullUrl, endActor, visitedName, visitedTitle);
 
         if (result.length > 0) {
           return [startActor, ...result];
         }
-      } else if (isTitlePage && url.startsWith('/name/') && !visited.has(url)) {
+      } else if (isTitlePage && url.startsWith('/name/') && !visitedName.has(url)) {
         if (url.includes('/bio/') || url.includes('/mediaindex/') || url.includes('/videogallery/') || url.includes('/bio?') || url.includes('/?ref')) {
           continue; // skip irrelevant links
         }
 
         const fullUrl = `https://www.imdb.com${url}`;
-        visited.add(url);
+        visitedName.add(url);
 
-        const result = await findPath(fullUrl, endActor, visited);
+        const result = await findPath(fullUrl, endActor, visitedName, visitedTitle);
 
         if (result.length > 0) {
           return [startActor, ...result];
