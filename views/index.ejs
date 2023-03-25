@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EJS App</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="/styles.css">
+  <title>Search App</title>
 </head>
 <body>
-  <form method="POST" action="/submit">
-    <label for="input1">Input 1:</label>
-    <input type="text" name="input1" id="input1">
-    <br>
-    <label for="input2">Input 2:</label>
-    <input type="text" name="input2" id="input2">
+  <h1>Shortest Distance in "IMDB Racing"</h1>
+  <form method="post">
+    <label for="url1">URL of the starting actor:</label>
+    <input type="text" name="url1"><br>
+    <label for="url2">URL of the ending actor:</label>
+    <input type="text" name="url2"><br>
+    <input type="submit" value="Search">
   </form>
-  <h2>Output:</h2>
-  <ul>
-    <% output.forEach(function(line) { %>
-      <li><%= line %></li>
-    <% }); %>
-  </ul>
+  <% if (results !== null) { %>
+    <h2>Found Path of Links:</h2>
+    <ul>
+      <% results.forEach((result) => { %>
+        <li><%= result %></li>
+      <% }); %>
+    </ul>
+  <% } %>
 </body>
 </html>
