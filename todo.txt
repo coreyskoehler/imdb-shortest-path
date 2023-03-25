@@ -1,0 +1,8 @@
+• Create readible console logs with path prints
+• Debug Aaron Paul -> Stanley Tucci
+• Clean up code 
+• Create SQL database of imdb actors
+    • Create name search functionality
+• Make results more legible
+• Add loading / progress bar.
+• Create github sites implementation
