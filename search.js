@@ -1,86 +1,131 @@
-const request = require('request');
 const cheerio = require('cheerio');
-//const MAX_DEPTH = 2; // Maximum recursion depth
+const axios = require('axios');
+const LRU = require('lru-cache');
 
-async function findPath(startActor, endActor, depth = 0, MAX_DEPTH = 2, broad_search = false, visitedName = new Set(), visitedTitle = new Set()) {
-  //console.log(`Checking ${startActor.split("/").slice(0, 5).join("/")}, end is ${endActor}, depth is ${depth}`);
-  //console.log(`Current: ${startActor.split("/").slice(0, 5).join("/")}`);
-  //console.log(`End: ${startActor.split("/").slice(0, 5).join("/")}`);
+const cache = new LRU({
+  max: 1000,
+  maxAge: 1000 * 60 * 60, // 1 hour
+});
+
+const display_everything = false;
+const display = false;
+const debug_paths = false;
+
+const size_line = 80;
+const start_line = "+".repeat(size_line * 1.25);
+const line = "_".repeat(size_line);
+const small_line = "~".repeat(size_line / 1.5);
+
+async function findPath(startActor, endActor, depth = 0, MAX_DEPTH = 2, broad_search = false, path = [], visitedName = new Set(), visitedTitle = new Set()) {
+  if (display_everything) {
+    console.log(`Checking ${startActor.split("/").slice(0, 5).join("/")}, end is ${endActor}, depth is ${depth}`);
+    console.log(`Current: ${startActor.split("/").slice(0, 5).join("/")}`);
+    console.log(`End: ${startActor.split("/").slice(0, 5).join("/")}`);
+  }
   if (startActor)
-    if (startActor.includes('/name/') && startActor.split("/").slice(0, 5).join("/") === endActor) {
-      console.log(`Found ${endActor}`);
-      console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
-      return [endActor];
+    if (debug_paths) {
+      path.push(startActor);
     }
+
+  if (startActor.includes('/name/') && startActor.split("/").slice(0, 5).join("/") === endActor) {
+    if (display) {
+      console.log(`${line}`);
+      console.log(`Found the final actor: ${endActor}`);
+      if (debug_paths) {
+        console.log(`${small_line}`);
+        console.log(`Final path traveled:`);
+        for (url in path) {
+          console.log(`${path[url]}`);
+        }
+        console.log(`${small_line}`);
+      }
+    }
+    return [endActor];
+  }
   if (depth >= MAX_DEPTH) {
-    console.log(`Max Depth of ${MAX_DEPTH} reached at ${startActor}`);
+    if (display_everything) {
+      console.log(`Max Depth of ${MAX_DEPTH} reached at ${startActor}`);
+    }
     return [];
   }
 
   // Determine the page type (name or title) based on the URL
   const isNamePage = startActor.includes('/name/');
   const isTitlePage = startActor.includes('/title/');
-  //console.log(`isTitlePage: ${isTitlePage}`);
-  // Make a request to the start actor's page
-  const options = {
-    url: startActor,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-    }
-  };
+
 
   let response;
-  try {
-    response = await makeRequest(options);
-  } catch (err) {
-    console.log(`Error occurred while fetching the page: ${err}`);
-    return [];
+  if (cache.has(startActor)) {
+    response = cache.get(startActor);
+  } else {
+    try {
+      response = await axios.get(startActor, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+        },
+      });
+      cache.set(startActor, response);
+    } catch (err) {
+      console.log(`Error occurred while fetching the page: ${err}`);
+      return [];
+    }
   }
-  if (isNamePage) {
-    console.log(`add to visited names: ${startActor.split("/").slice(0, 5).join("/")}`);
-    visitedName.add(startActor.split("/").slice(0, 5).join("/"));
-  } else if (isTitlePage) {
-    console.log(`--------------------------------NEW TITLE VISITED!!!!!!!!!!!: ${startActor.split("/").slice(0, 5).join("/")}`);
-    visitedTitle.add(startActor.split("/").slice(0, 5).join("/"));
-  }
-  //console.log(`add to visited: ${startActor.split("/").slice(0, 6).join("/")}`);
-  //visitedTitle.add(startActor.split("/").slice(0, 6).join("/"));
-
-  const $ = cheerio.load(response);
+  const $ = cheerio.load(response.data);
   const links = $('a');
+
+
+  if (isNamePage) {
+    if (display_everything) {
+      console.log(`Added to visited names: ${startActor.split("/").slice(0, 5).join("/")}`);
+    }
+    visitedName.add(startActor);
+  } else if (isTitlePage) {
+    if (display) {
+      console.log(`New title visited: ${startActor.split("/").slice(0, 5).join("/")}`);
+      if (debug_paths) {
+        console.log(`${small_line}`);
+        console.log(`Path traveled so far:`);
+        for (url in path) {
+          console.log(`${path[url]}`);
+        }
+        console.log(`${small_line}`);
+      }
+    }
+    visitedTitle.add(startActor);
+  }
+
   // Loop through each link and follow it recursively, but only check relevant links based on page type
   for (let i = 0; i < links.length; i++) {
-
+    if (debug_paths) {
+      var new_path = [...path];
+    }
     const link = $(links[i]);
     const url = link.attr('href');
-    //const fullUrl = `https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`;
-    //console.log(`Once started, checking ${`https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`}`);
-    //console.log(`DUPLICATE FOUND: ${visitedName.has(`https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`)}`);
+    if (display_everything) {
+      const fullUrl = `https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`;
+      console.log(`Once started, checking ${`https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`}`);
+      console.log(`DUPLICATE FOUND: ${visitedName.has(`https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`)}`);
+    }
 
     if (url) {
-
-      if (isNamePage && url.startsWith('/title/') && (broad_search || url.includes('?ref_=nm_knf_t')) && (!broad_search || url.includes('?ref_=nm_flmg_t')) && !visitedTitle.has(`https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`)) {
-        //if (url.includes('/bio/') || url.includes('/mediaindex/') || url.includes('/videogallery/') || url.includes('/bio?') || url.includes('/?ref')) {
-        //  continue; // skip irrelevant links
-        //}
-        const fullUrl = `https://www.imdb.com${url}`;
-        //console.log(`title pathname: ${url.split("/").slice(0, 3).join("/")}`);
-        //visitedTitle.add(url.split("/").slice(0, 4).join("/"));
-
-        const result = await findPath(fullUrl, endActor, depth + 1, MAX_DEPTH, false, visitedName, visitedTitle);
-
+      const fullUrl = `https://www.imdb.com${url}`;
+      if (isNamePage && url.startsWith('/title/') && (broad_search || url.includes('?ref_=nm_knf_t')) && (!broad_search || url.includes('?ref_=nm_flmg_t')) && !visitedTitle.has(fullUrl)) {
+        let result = null;
+        if (debug_paths) {
+          result = await findPath(fullUrl, endActor, depth + 1, MAX_DEPTH, false, new_path, visitedName, visitedTitle);
+        } else {
+          result = await findPath(fullUrl, endActor, depth + 1, MAX_DEPTH, false, path, visitedName, visitedTitle);
+        }
         if (result.length > 0) {
           return [startActor, ...result];
         }
-      } else if (isTitlePage && url.startsWith('/name/') && url.includes('?ref_=tt_cl_t') && !visitedName.has(`https://www.imdb.com${url.split("/").slice(0, 3).join("/")}`)) {
-        //if (url.includes('/bio/') || url.includes('/mediaindex/') || url.includes('/videogallery/') || url.includes('/bio?') || url.includes('/?ref')) {
-        //  continue; // skip irrelevant links
-        //}
-        const fullUrl = `https://www.imdb.com${url}`;
-        //console.log(`name pathname: ${url.split("/").slice(0, 3).join("/")}`);
-        //visitedName.add(url.split("/").slice(0, 3).join("/"));
-
-        const result = await findPath(fullUrl, endActor, depth + 1, MAX_DEPTH, false, visitedName, visitedTitle);
+      } else if (isTitlePage && url.startsWith('/name/') && url.includes('?ref_=tt_cl_t') && !visitedName.has(fullUrl)) {
+        let result = null;
+        if (debug_paths) {
+          result = await findPath(fullUrl, endActor, depth + 1, MAX_DEPTH, false, new_path, visitedName, visitedTitle);
+        } else {
+          result = await findPath(fullUrl, endActor, depth + 1, MAX_DEPTH, false, path, visitedName, visitedTitle);
+        }
 
         if (result.length > 0) {
           return [startActor, ...result];
@@ -88,69 +133,130 @@ async function findPath(startActor, endActor, depth = 0, MAX_DEPTH = 2, broad_se
       }
     }
   }
-
-  console.log(`Dead end at ${startActor}`);
+  if (display_everything) {
+    console.log(`Dead end at ${startActor}`);
+  }
   return [];
 }
 
-function makeRequest(options) {
-  return new Promise((resolve, reject) => {
-    request(options, (error, response, body) => {
-      if (error) {
-        reject(error);
-      } else if (response.statusCode !== 200) {
-        reject(`Unexpected status code: ${response.statusCode}`);
-      } else {
-        resolve(body);
-      }
-    });
-  });
+async function clean_url(url) {
+  let cleaned = (' ' + url).slice(1);
+  if (url.startsWith("www.")) {
+    cleaned = "https://" + cleaned;
+  } else if (url.startsWith("imdb.com")) {
+    cleaned = "https://www." + cleaned;
+  } else if (!url.startsWith("https://")) {
+    return "";
+  }
+  cleaned = cleaned.split("/").slice(0, 5).join("/");
+  if (!cleaned.includes("https://www.imdb.com/name/nm")) {
+    return "";
+  }
+  return cleaned;
+}
+
+async function add_slash(result) {
+  for (i in result) {
+    result[i] = result[i].concat('/');
+  }
+  return result;
 }
 
 async function output(startActor, endActor) {
-  //const startActor = 'https://www.imdb.com/name/nm0001570/';
-  //const endActor = 'https://www.imdb.com/name/nm0085312';
-  startActor = startActor.split("/").slice(0, 5).join("/");
-  endActor = endActor.split("/").slice(0, 5).join("/");
-  console.log(`Start actor: ${startActor}`);
-  console.log(`End actor: ${endActor}`);
-  if (!startActor.includes("www.imdb.com/name/nm") || !endActor.includes("www.imdb.com/name/nm")) {
-    return ["Invalid input, please input the URLS of two imdb actors."]
-  }// else if(startActor.startsWith("www")){
-
-  //}
+  const t0 = performance.now();
+  startActor = await clean_url(startActor);
+  endActor = await clean_url(endActor);
+  if (startActor == "" || endActor == "") {
+    return null;
+  }
+  if (display) {
+    console.log(`${start_line}`);
+    console.log(`Start actor: ${startActor}`);
+    console.log(`End actor: ${endActor}`);
+    console.log(`${start_line}`);
+  }
   const broad_search = true;
-  const result = []
+  let result = []
 
   if (!broad_search) {
     var_depth = 2; // Maximum recursion depth
-    const result = await findPath(startActor, endActor, 0, var_depth);
+    result = await findPath(startActor, endActor, 0, var_depth);
     while (result.length == 0) {
       var_depth += 2
-      console.log(`-----------------------------------------INCREASING SEARCH SIZE to ${var_depth}--------------------------:`);
-      const result = await findPath(startActor, endActor, 0, var_depth);
+      if (display) {
+        console.log(`${line}`);
+        console.log(`Increasing search size to:  ${var_depth}`);
+        console.log(`${line}`);
+      }
+      result = await findPath(startActor, endActor, 0, var_depth);
 
     }
-    console.log(`FINAL LIST: ${result}`);
-    console.log(`CLICKS AWAY: ${result.length - 1}`);
+    if (display) {
+      console.log(`${line}`);
+      console.log(`Final List:`);
+      for (url in result) {
+        console.log(`${result[url]}`);
+      }
+      console.log(`Clicks Away: ${result.length - 1}`);
+      console.log(`${line}`);
+    }
     return result;
   } else {
-    const result = await findPath(startActor, endActor, 0, 2, false);
+    if (display) {
+      console.log(`First search, size 2, no depth`);
+      console.log(`${line}`);
+    }
+    let result = await findPath(startActor, endActor, 0, 2, false);
     if (result.length == 0) {
-      const result = await findPath(startActor, endActor, 0, 4, false);
+      if (display) {
+        console.log(`${line}`);
+        console.log(`Second search, size 2, depth`);
+        console.log(`${line}`);
+      }
+      result = await findPath(startActor, endActor, 0, 2, true);
     }
     if (result.length == 0) {
-      const result = await findPath(startActor, endActor, 0, 2, true);
+      if (display) {
+        console.log(`${line}`);
+        console.log(`Third search, size 4, no depth`);
+        console.log(`${line}`);
+      }
+      result = await findPath(startActor, endActor, 0, 4, false);
+    }
+
+    if (result.length == 0) {
+      if (display) {
+        console.log(`${line}`);
+        console.log(`Fourth search, size 4, depth`);
+        console.log(`${line}`);
+      }
+      result = await findPath(startActor, endActor, 0, 4, true);
     }
     if (result.length == 0) {
-      const result = await findPath(startActor, endActor, 0, 4, true);
+      if (display) {
+        console.log(`${line}`);
+        console.log(`Final search, size 6, depth`);
+        console.log(`${line}`);
+      }
+      result = await findPath(startActor, endActor, 0, 6, true);
     }
-    console.log(`FINAL LIST: ${result}`);
-    console.log(`CLICKS AWAY: ${result.length - 1}`)
-    return result;
+    if (display) {
+      console.log(`${line}`);
+      console.log(`Final List:`);
+      for (url in result) {
+        console.log(`${result[url]}`);
+      }
+      console.log(`Clicks away: ${result.length - 1}`)
+      console.log(`${line}`);
+    }
+    if (result.length == 0) {
+      return null;
+    }
+    const t1 = performance.now();
+    console.log(`${small_line}`);
+    console.log(`Runtime: ${(t1 - t0) / 1000} seconds`);
+    console.log(`${small_line}`);
+    return await add_slash(result);
   }
 }
-
 module.exports = { output };
-
-//output('https://www.imdb.com/name/nm0000168/', 'https://www.imdb.com/name/nm0000237');

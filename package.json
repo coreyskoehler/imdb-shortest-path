@@ -17,5 +17,8 @@
     "mime": "^3.0.0",
     "puppeteer": "^19.8.0",
     "request": "^2.88.2"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0"
   }
 }

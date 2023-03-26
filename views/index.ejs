@@ -18,9 +18,11 @@
     <h2>Found Path of Links:</h2>
     <ul>
       <% results.forEach((result) => { %>
-        <li><%= result %></li>
+        <li><a href="<%= result %>" target="_blank"><%= result %></a></li>
       <% }); %>
     </ul>
   <% } %>
+  
+  
 </body>
 </html>
