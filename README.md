@@ -1,11 +1,11 @@
-# IMDB Actor Link Finder
+# IMDB Shortest Path
 
 This Node.js web application finds the shortest link between two actors in a game of "IMDB Race". It scrapes IMDB to create chains of connections from one actor to another through shared movie appearances.
 
 ## Features
 
 - Web scraping of IMDB using Axios and Cheerio
-- Efficient search algorithm for finding the shortest path between actors
+- Efficient iterative deepening search algorithm for finding the shortest path between actors
 - LRU caching for improved performance
 - Web interface for easy interaction
 
